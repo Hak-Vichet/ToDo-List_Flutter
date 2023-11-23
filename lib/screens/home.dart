@@ -1,3 +1,6 @@
+// import 'dart:ffi';
+import 'package:firebase_database/firebase_database.dart';
+
 import 'package:flutter/material.dart';
 import 'package:todo_list/constants/colors.dart';
 import 'package:todo_list/widgets/todo_list.dart';
@@ -12,16 +15,22 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final todosList = ToDo.todoList();
-  List<ToDo> _foundItem = [];
+  List<ToDo> foundItem = [];
   final TextEditingController _todoController = TextEditingController();
+
+
+  // late DatabaseReference dbRef;
+
+  
 
   @override
   initState() {
     // This's like a database to store all todo items.
     // When the first init state
-    _foundItem = todosList;
+    foundItem = todosList;
     super.initState();
     // _todoController.addListener(_printLatestValue);
+    // dbRef = FirebaseDatabase.instance.ref().child("TodoList");
   }
 
   @override
@@ -49,11 +58,13 @@ class _HomeState extends State<Home> {
                           ),
                         ),
                       ),
-                      for (ToDo todoo in _foundItem.reversed)
+                      for (ToDo todoo in foundItem.reversed)
                         TodoList(
                           todo: todoo,
                           onToDoChange: _handleToDoChange,
                           onDeleteItem: _deleteToDoItem,
+                          onEditItem: _editToDoItem,
+                          myList: _newList,
                         ),
                     ],
                   ),
@@ -61,6 +72,8 @@ class _HomeState extends State<Home> {
               ],
             ),
           ),
+
+          // Add new task widget
           Align(
             alignment: Alignment.bottomCenter,
             child: Row(
@@ -93,6 +106,7 @@ class _HomeState extends State<Home> {
                       decoration: InputDecoration(
                         hintText: 'Add a new task!',
                         border: InputBorder.none,
+                        isDense: true,
                       ),
                     ),
                   ),
@@ -102,14 +116,46 @@ class _HomeState extends State<Home> {
                     bottom: 20,
                     right: 20,
                   ),
+                  //Add task button
                   child: ElevatedButton(
-                    child: const Text(
+                    child: Text(
                       '+',
                       style: TextStyle(fontSize: 40, color: Colors.white),
                     ),
+
+
                     onPressed: () {
                       print("Add new task.");
-                      _addToDoItem(_todoController.text);
+                      if (_todoController.text.isNotEmpty && !foundItem.any((item) => item.todoText == _todoController.text)) {
+                        _addToDoItem(_todoController.text.trim());
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text('Warning'),
+                              content: const Text('Task is empty or already exists.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      }
+
+                      // Map<String, String> tasks = {
+                      //   "task": _todoController.text
+                      // };
+                      // dbRef.push().set(tasks).then((_) {
+                      //   print("Added to Firebase");
+                      // }).catchError((onError) {
+                      //   print("Error: $onError");
+                      // });
                     },
                     style: ElevatedButton.styleFrom(
                       shape: RoundedRectangleBorder(
@@ -143,6 +189,23 @@ class _HomeState extends State<Home> {
     );
   }
 
+  void _editToDoItem(String id, String newTodoText) {
+  setState(() {
+    // Find the todo item with the specified id
+    ToDo? todoToEdit = todosList.firstWhere((item) => item.id == id);
+
+      // Update the todoText of the found item
+      todoToEdit.todoText = newTodoText;
+    
+  });
+}
+  void _newList(List<ToDo> newList) {
+    setState(() {
+      foundItem = newList;
+    });
+  }
+
+
   void _runFilter(String enterKeyword) {
     List<ToDo> results = [];
     if (enterKeyword.isEmpty) {
@@ -154,7 +217,7 @@ class _HomeState extends State<Home> {
           .toList();
     }
     setState(() {
-      _foundItem = results;
+      foundItem = results;
     });
   }
 
@@ -214,7 +277,7 @@ class _HomeState extends State<Home> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Image.asset(
-                  'assets/images/vichet.jpg',
+                  'assets/images/vichet2.png',
                   scale: 1.0,
                 ),
               ),
